@@ -1,4 +1,6 @@
 
-# About the project
+# Introduction to Open Data Science
 
-*Write a short description about the course and add a link to your github repository here. This is an R markdown (.Rmd) file so you can use R markdown syntax. See the 'Useful links' page in the mooc area (chapter 1) for instructions.*
+After completing this course you will understand the principles and advantages of using open research tools with open data and understand the possibilities of reproducible research.
+
+[Link to my repo](https://github.com/P3tt3ri/IODS-project)
