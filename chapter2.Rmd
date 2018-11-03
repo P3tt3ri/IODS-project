@@ -100,11 +100,14 @@ The QQ-plot (Normal QQ) visualizes the normality of error assumption. The better
 plot(my_model, which=1)
 
 ```
+
 Residual vs Fitted plot shows if there's any pattern in the relationship between the magnitudes of residuals and fitted values (which in turn reflect the values of explanatory variables). If for instance residuals would tend be bigger with bigger predicted values, that would imply the error of linear equation is not independent of the explanatory variables. Again we seem to be good.
+
 
 ```{r}
 plot(my_model, which=5)
 
 ```
+
 Residuals vs Leverage plot shows if there are any incluental cases in the sample, i.e. such cases whose inclusion/exclusion has a noticable impact on the regression results. Those would be points on the upper right and lower right corner of the plot, i.e. points with high absolute residual and high leverage. Influential points would typically outside the dashed line marking the Cook's distance. In this case the distance is so large that the line doesn't show on the plot. So there seems to be no cases that would require further inspection.   
 
