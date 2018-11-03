@@ -1,19 +1,35 @@
 # 2. Regression and model validation
 
+**(Note to viewer: this version is slightly incomplete, especially "2.4 Explaining the relationships".)**
+
 ## 2.1 Reading in the data
 First I read the wrangled data from my project folder:
 ```{r}
 l14 <- read.csv2("~/GitHub/IODS-project/data/learning2014.csv", header=TRUE)
-dim(l14)
-str(l14)
-head(l14)
 ```
 ## 2.2 Overview of the data
+
+The data is from a study by Kimmo Vehkalahti: "The relationship between learning approaches and students'
+achievements in an introductory statistics course in Finland". A short presentation of the study can be found 
+[here:](https://www.slideshare.net/kimmovehkalahti/the-relationship-between-learning-approaches-and-students-achievements-in-an-introductory-statistics-course-in-finland)
+
 Summary of the variables:
 ```{r}
 summary(l14)
 
 ```
+
+A data frame of 166 observations and seven variables:
+
+1. Gender
+2. Age
+3. Attitude - the subject's general attitude towards statistics. Summed up from up from various various variables
+of the original study and scaled to 1-5. 1 means very negative attitude and 5 very positive. Same goes for the the the next three variables.
+4. The extent of the subject's level of commitment to deep learning approach.
+5. The extent of the subject's level of commitment to strategic learning approach.
+6. The extent of the subject's level of commitment to surface learning approach.
+7. The best point score on the course exam (several tries possible).
+
 Scatter plot matrix:
 ```{r message=FALSE, warning=FALSE}
 library(ggplot2)
@@ -22,12 +38,36 @@ p <- ggpairs(l14, mapping = aes(col=gender, alpha=0.3), lower = list(combo = wra
 p
 
 ```
+
+Some observations on the data:
+
+* Two thirds of the sample are female which corresponds pretty well with the gender percenteges of Social Sciences students, the main source of the subjects.
+
+* Age is a right-skewed (median smaller than mean).  
+```{r, fig.align='center'}
+table(cut(l14$age, breaks = seq(15,55,by=10)))
+```
+
+*  The distribution of the attitude is quite different between males and females:
+```{r, fig.align='center'}
+table(l14$gender, cut(l14$attitude, breaks = seq(1,5,by=0.5)))
+```
+
+With females, the distribution is almost textbook normal. With males it's skewed left.
+
+* With females, there's a higher percentage of those who scored high on surface learning. 
+
+```{r, fig.align='center'}
+table(l14$gender, cut(l14$surf, breaks = seq(1,5,by=0.5)))
+```
+
+
 ## 2.3 Building the model
 ```{r}
 my_model <- lm(points ~ attitude + surf + stra, data = l14)
 summary(my_model)
 ```
-Dropped surf and stra
+The only variable with statistically significant effect on points is attitude, so I dropped surf and stra.
 ```{r}
 my_model <- lm(points ~ attitude, data = l14)
 summary(my_model)
@@ -36,12 +76,35 @@ summary(my_model)
 
 ## 2.4 Explaining the relationships
 
+R-squared is pretty low, so attitude doesn't explain a large portion of the variance of the test points. 
+
 ## 2.5 Model assumptions and diagnostics
 
+The basic assumptions of linear regression are:
+
+* Linearity: the outcome can be modelled as a linear combination of explanatory variables.
+
+* $\epsilon \sim N(0,\sigma^2)$: errors are normally distributed, not correlated, have a constant variance, and their size doesn't depend on the explanatory variables.
+
+Let's draw some diagnostical plot testing those assumptions:
+
 ```{r}
-par(mfrow=c(2,2))
-plot(my_model, which=c(1,2,5))
+plot(my_model, which=2)
 
 ```
 
+
+The QQ-plot (Normal QQ) visualizes the normality of error assumption. The better the data points land on the straight line the better assumption holds. Here we seem to have a reasonably good fit.
+
+```{r}
+plot(my_model, which=1)
+
+```
+Residual vs Fitted plot shows if there's any pattern in the relationship between the magnitudes of residuals and fitted values (which in turn reflect the values of explanatory variables). If for instance residuals would tend be bigger with bigger predicted values, that would imply the error of linear equation is not independent of the explanatory variables. Again we seem to be good.
+
+```{r}
+plot(my_model, which=5)
+
+```
+Residuals vs Leverage plot shows if there are any incluental cases in the sample, i.e. such cases whose inclusion/exclusion has a noticable impact on the regression results. Those would be points on the upper right and lower right corner of the plot, i.e. points with high absolute residual and high leverage. Influential points would typically outside the dashed line marking the Cook's distance. In this case the distance is so large that the line doesn't show on the plot. So there seems to be no cases that would require further inspection.   
 
