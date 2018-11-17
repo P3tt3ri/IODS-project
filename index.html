@@ -508,7 +508,7 @@ table(Predicted=alko$prediction,Actual=alko$high_use)</code></pre>
 <pre class="r"><code>alko$prob2=runif(nrow(alko))
 alko$prediction2=(alko$prob2&gt;0.5)
 sum(alko$prediction2 != alko$high_use)/nrow(alko)</code></pre>
-<pre><code>## [1] 0.5052356</code></pre>
+<pre><code>## [1] 0.486911</code></pre>
 <p>About half of the guesses were wrong, which makes sense because there are two possible outcomes. At least we did better than that.</p>
 <hr />
 </div>
