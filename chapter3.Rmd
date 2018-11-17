@@ -1,0 +1,113 @@
+# 3. Logistic regression 
+
+## 3.1 Reading in the data (step 2 of Analysis assignment)
+First I read the wrangled data from my project folder:
+```{r}
+alko <- read.csv2("~/GitHub/IODS-project/data/alcohol.csv", header=TRUE)
+dim(alko)
+colnames(alko)
+```
+
+Data concerns student achievement in secondary education of two Portuguese schools. The data attributes include student grades, demographic, social and school related features) and it was collected by using school reports and questionnaires. 
+[More about the data:](https://archive.ics.uci.edu/ml/datasets/Student+Performance)
+
+## 3.2 Choosing variables (step 3 of Analysis)
+I chose the following four variables to indicate (not implying causation) a possible high level of alcohol consumption. For obvious reasons, I didn't consider the variables that were used to calculate the **high_use** variable.
+
+1. failures - number of failed classes. High level of consumption can affect school work negatively.  
+2. famrel - quality of family relationships (numeric: from 1 - very bad to 5 - excellent). High alcohol consumption might cause friction in family.
+3. health - current health status (numeric: from 1 - very bad to 5 - very good). Heavy consumption can cause problems with health.
+4. absences - number of school absences. Absenteeism might be caused by hangovers or staying up late in bars/clubs. 
+
+## 3.3 Exploring the variables (step 4)
+### 3.3.1 Failed classes
+
+```{r}
+table(alko$failures,alko$high_use)
+```
+The proportion of the heavy drinkers rises when number of failures rises, so there might be something there.
+
+### 3.3.2 Family relations
+
+```{r}
+table(alko$famrel,alko$high_use)
+```
+
+### 3.3.3 Health
+
+```{r}
+table(alko$health,alko$high_use)
+```
+
+### 3.3.4 Absences
+
+```{r}
+table(alko$absences,alko$high_use)
+```
+Some people have missed school quiten often...
+
+## 3.4 Building the model (step 5)
+We build a logistic regression model with our chosen variables:
+```{r}
+malli <- glm(high_use ~ failures + famrel + health + absences, data = alko, family = "binomial")
+summary(malli)
+```
+Only **failures** and **absences** seem to have statistically significant effect. Recalculating the model:
+```{r}
+malli <- glm(high_use ~ failures + absences, data = alko, family = "binomial")
+summary(malli)
+```
+
+
+Model coefficients:
+```{r}
+coef(malli)
+```
+**From the DataCamp video: "The exponents of the coeffiecients can be interpreted as odds ratios between a unit change
+vs. no change."***
+```{r}
+exp(coef(malli))
+```
+
+Confidence intervals:
+```{r}
+exp(confint(malli))
+```
+
+## 3.5 Prediction (step 6)
+```{r}
+alko$prob <- predict(malli, type = "response")
+# Predict high_use=TRUE if calculated probability > 0.5
+alko$prediction=(alko$prob>0.5)
+table(Predicted=alko$prediction,Actual=alko$high_use)
+```
+The table above (confusion matrix) shows the number of type 1 errors (false positives; lower left corner) and type 2 errors (false negatives; upper right).
+Total proportion of inaccurate predictions:
+```{r}
+sum(alko$prediction != alko$high_use)/nrow(alko)
+```
+True positive rate (sensitivity):
+```{r}
+sum(alko$high_use ==TRUE & alko$prediction==TRUE)/sum(alko$high_use==TRUE)
+```
+
+True negative rate (specificity):
+```{r}
+sum(alko$high_use == FALSE & alko$prediction == FALSE)/sum(alko$high_use==FALSE)
+```
+So we're not doing so great when trying to catch the "high users". We'd probably do better if we included gender in the model:
+```{r}
+table(Sex=alko$sex,HighConsumption=alko$high_use)
+
+```
+
+But too late for that now. I have only an hour to finish this assignment. Let's try a simple guessing algorithm
+for prediction. First we'll generate random prorababilities, then we'll use threshold of 0.5 to make another prediction and finally calculate the proportion on inaccurate predictions:
+```{r}
+alko$prob2=runif(nrow(alko))
+alko$prediction2=(alko$prob2>0.5)
+sum(alko$prediction2 != alko$high_use)/nrow(alko)
+
+```
+
+About half of the guesses were wrong, which makes sense because there are two possible outcomes. At least we did better than that.
