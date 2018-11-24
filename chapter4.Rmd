@@ -1,0 +1,227 @@
+# 4. Clustering and classification 
+
+## 4.1 The data
+The Boston dataset was loaded from the MASS package. This dataset contains information collected by the U.S Census Service concerning housing in the area of Boston Mass. It was obtained from the StatLib archive (http://lib.stat.cmu.edu/datasets/boston). The dataset contains 506 cases. 
+
+Variables:
+
+* crim - per capita crime rate by town
+* zn - proportion of residential land zoned for lots over 25,000 sq.ft.
+* indus - proportion of non-retail business acres per town.
+* chas - Charles River dummy variable (1 if tract bounds river; 0 otherwise)
+* nox - nitric oxides concentration (parts per 10 million)
+* rm - average number of rooms per dwelling
+* age - proportion of owner-occupied units built prior to 1940
+* dis - weighted distances to five Boston employment centres
+* rad - index of accessibility to radial highways
+* tax - full-value property-tax rate per $10,000
+* ptratio - pupil-teacher ratio by town
+* black - 1000(Bk - 0.63)^2 where Bk is the proportion of blacks by town
+* lstat - % lower status of the population
+* medv - Median value of owner-occupied homes in $1000's
+
+
+```{r}
+# setwd("~/GitHub/IODS-project/data")
+library(MASS)
+data(Boston)
+```
+
+## 4.2 Overview of the data
+
+Structure of data and summary of variables:
+```{r}
+str(Boston)
+summary(Boston)
+
+```
+
+Correlation between variables:
+```{r}
+library(GGally)
+ggcorr(Boston)
+```
+
+
+There are a fex strong correlations:
+
+- indus/nox:
+
+```{r}
+cor(Boston$indus,Boston$nox)
+```
+- rad/tax:
+
+```{r}
+cor(Boston$rad,Boston$tax)
+```
+- indus/tax:
+
+```{r}
+cor(Boston$indus,Boston$tax)
+```
+
+They make sense: industrial areas have more pollution, better communications increase the property's value. Business facilities seem to pay higher rate of property tax.
+
+## 4.3 Standardizing and splitting the data
+
+### 4.3.1 Stardizing variables
+Standardizing variable is achieved by transformation **standVar=(var- mean(var))/standard deviation**. The new variable will have a mean of 0 and variance of 1. It is not bound like a **normalized** variable.
+
+```{r}
+boston_scaled <- as.data.frame(scale(Boston))
+summary(boston_scaled)
+
+```
+### 4.3.2 Creating a categorical variable and splitting the data
+
+Crime rate by quantiles:
+```{r}
+quantile(boston_scaled$crim)
+
+```
+
+We'll use these quantiles to create a new categorical variable **- crime -** with 4 catogories: low, med low, med high, high. As could be expected, the standardized variable and it's categorical counterpart a distributed evenly around the mean. We'll also drop the old continuous variable from the dataset.
+
+Table of **crime**:
+```{r}
+bins <- quantile(boston_scaled$crim)
+labs = c("low","med_low","med_high","high")
+boston_scaled$crime <- cut(boston_scaled$crim, breaks = bins, include.lowest = TRUE,labels=labs)
+boston_scaled <- dplyr::select(boston_scaled, -crim)
+table(boston_scaled$crime)
+```
+
+Lastly we'll split the dataset in 80/20 proportion into **train** and **test** sets.
+```{r}
+ind <- sample(nrow(Boston),  size = nrow(Boston) * 0.8)
+train <- boston_scaled[ind,]
+test <- boston_scaled[-ind,]
+```
+
+The training set:
+```{r}
+table(train$crime)
+
+```
+
+The test set:
+```{r}
+table(test$crime)
+
+```
+As can be seen, **sample** function doesn't necessarily retain the original distribution of the variable of interest when splitting. If that is the goal, **caret** package in R can be used. But we won't bother with that this time. 
+
+## 4.4 Building the model
+
+Linear Discriminant analysis is a classification (and dimension reduction) method. It finds the (linear) combination of the variables that separate the target variable classes. The target can be binary or multiclass variable. We build a model with crime as outcome and all other variables as explanatory. Then we print it.
+
+```{r}
+lda.fit <- lda(crime ~ ., data = train)
+lda.fit
+
+```
+Some explanations of the output:
+
+* Prior probabilities show that crime is about as equal to fall into any of the categories, which makes sense because it was created by quantiles.
+
+* The first linear discriminant function LD1 achieves 95% of the separation.
+
+The following plot of the model is ripped off straight from DataCamp exercises. It's not very clear or informative, but due to time pressures I don't have the time time to make it better. Sorry.
+
+```{r}
+lda.arrows <- function(x, myscale = 1, arrow_heads = 0.1, color = "red", tex = 0.75, choices = c(1,2)){
+  heads <- coef(x)
+  arrows(x0 = 0, y0 = 0, 
+         x1 = myscale * heads[,choices[1]], 
+         y1 = myscale * heads[,choices[2]], col=color, length = arrow_heads)
+  text(myscale * heads[,choices], labels = row.names(heads), 
+       cex = tex, col=color, pos=3)
+}
+# target classes as numeric
+classes <- as.numeric(train$crime)
+# plot the lda results
+plot(lda.fit, dimen = 2,col=classes,pch=classes)
+lda.arrows(lda.fit, myscale = 0.3)
+
+```
+
+## 4.5 Prediction
+
+Part 6 of Analysis: "Save the crime categories from the test set and then remove the categorical crime variable from the test dataset. Then predict the classes with the LDA model on the test data. Cross tabulate the results with the crime categories from the test set." (Click "Code" to see - well- the code.)
+
+```{r}
+correct_classes = test$crime
+test <- dplyr::select(test, -crime)
+lda.pred <- predict(lda.fit, newdata = test)
+
+```
+Predicted values vs. actual values:
+```{r}
+confu = table(correct = correct_classes, predicted = lda.pred$class)
+confu
+```
+Proportion of correct predictions:
+```{r}
+sum(diag(confu))/nrow(test)
+```
+
+So we have about 70% right. (Notice that proportion varies with each new sampling because I didn't use the **set.seed** command.) Not so great but better than guessing. One notable thing is that almost none of the predictions were off by more than one class; that's to say that difference between predicted and actual numerical value of factor variable was almost never greater than one. The code used to calculate this under the **Code** link.
+
+Number of predictions off by more than one
+```{r include=TRUE}
+correct = as.numeric(correct_classes)
+predicted = as.numeric(lda.pred$class)
+sum(abs(correct-predicted)>1)
+```
+
+## 4.6 Distances and K-means
+
+We reload and standardize the dataset. The result is stored in *boston_scaled* data frame again. Then we calculate the euclidean distances and summarize them.
+```{r}
+boston_scaled <- as.data.frame(scale(Boston))
+dist_eu <- dist(Boston)
+summary(dist_eu)
+
+```
+
+Then we execute the following steps:
+
+* Use the **set.seed** function so the k-means algorithm starts with the same centers every time we execute the code.
+
+* Set the maximum number of clusters to 10.
+
+* Calculate the total within cluster sum of squares with different numbers of clusters from 1 to 10.
+
+* Plot the **twcsss** with different cluster numbers.
+
+```{r}
+# MASS, ggplot2 and Boston dataset are available
+library(ggplot2)
+set.seed(123)
+
+# determine the number of clusters
+k_max <- 10
+
+# calculate the total within sum of squares
+twcss <- sapply(1:k_max, function(k){kmeans(boston_scaled, k)$tot.withinss})
+
+# visualize the results
+qplot(x = 1:k_max, y = twcss, geom = 'line')
+
+
+```
+
+Greatest drop in **twcss** is when we move from one cluster to two. But up to 8 clusters we see improvement. We'll go with 3 clusters for visual clarity and plot the result.
+
+```{r}
+km <-kmeans(boston_scaled, centers = 3)
+pairs(boston_scaled, col = km$cluster)
+```
+
+Again the plot look pretty useless (DataCamp again), but I haven't got the time to do it properly. This clustering part of the analysis will have to remain incomplete, because I'm done now.
+
+
+
+
+
